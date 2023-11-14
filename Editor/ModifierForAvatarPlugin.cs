@@ -1,5 +1,6 @@
 using Anatawa12.Modifier4Avatar.Editor;
 using nadena.dev.ndmf;
+using UnityEngine;
 
 [assembly:ExportsPlugin(typeof(ModifierForAvatarPlugin))]
 
@@ -21,6 +22,7 @@ namespace Anatawa12.Modifier4Avatar.Editor
                             {
                                 foreach (var child in makeChildren.children)
                                     child.parent = makeChildren.transform;
+                                Object.DestroyImmediate(makeChildren);
                             }
                         })
                         ;
