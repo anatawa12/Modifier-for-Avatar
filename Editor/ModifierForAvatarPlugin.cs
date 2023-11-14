@@ -27,6 +27,18 @@ namespace Anatawa12.Modifier4Avatar.Editor
                         })
                         ;
                 });
+
+            InPhase(BuildPhase.Transforming)
+                .BeforePlugin("net.narazaka.vrchat.floor_adjuster")
+                .AfterPlugin("nadena.dev.modular-avatar")
+                .Run("Defromer", ctx =>
+                {
+                    foreach (var deformer in ctx.AvatarRootObject.GetComponentsInChildren<Deformer>(true))
+                    {
+                        deformer.info.Apply(deformer.transform);
+                        Object.DestroyImmediate(deformer);
+                    }
+                });
         }
     }
 }
