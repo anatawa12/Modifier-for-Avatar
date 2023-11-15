@@ -38,6 +38,9 @@ namespace Anatawa12.Modifier4Avatar
                 var childInfo = transformInfos[childIndex];
                 var child = transform.Find(childInfo.name);
                 if (child) childInfo.Apply(child, transformInfos);
+                // MA (FirstPersonVisible) support
+                var firstPersonVisible = transform.Find(childInfo.name + " (FirstPersonVisible)");
+                if (firstPersonVisible) childInfo.Apply(firstPersonVisible, transformInfos);
             }
         }
     }
