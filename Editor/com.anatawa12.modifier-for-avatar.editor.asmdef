@@ -5,7 +5,9 @@
         "nadena.dev.ndmf.runtime",
         "com.anatawa12.modifier-for-avatar.runtime"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
