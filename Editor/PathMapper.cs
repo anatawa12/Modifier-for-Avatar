@@ -154,9 +154,8 @@ namespace Anatawa12.Modifier4Avatar.Editor
     internal class AnimatorControllerMapper : DeepCloner
     {
         private readonly AnimationObjectMapper _mapping;
-        private bool _mapped;
 
-        public AnimatorControllerMapper(AnimationObjectMapper mapping) : base(mapping)
+        public AnimatorControllerMapper(AnimationObjectMapper mapping)
         {
             _mapping = mapping;
         }

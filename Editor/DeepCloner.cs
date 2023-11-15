@@ -9,14 +9,8 @@ namespace Anatawa12.Modifier4Avatar.Editor
 {
     internal abstract class DeepCloner
     {
-        private readonly AnimationObjectMapper _mapping;
         private readonly Dictionary<Object, Object> _cache = new Dictionary<Object, Object>();
         private bool _mapped;
-
-        public DeepCloner(AnimationObjectMapper mapping)
-        {
-            _mapping = mapping;
-        }
 
         public T MapObject<T>(T obj) where T : Object =>
             DeepClone(obj);
