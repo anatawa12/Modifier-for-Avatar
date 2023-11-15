@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 
 namespace Anatawa12.Modifier4Avatar.Editor
 {
@@ -10,21 +11,27 @@ namespace Anatawa12.Modifier4Avatar.Editor
     {
         public GameObject importFrom;
         private SerializedProperty _transformInfos;
+        private SerializedProperty _eyePosition;
 
         private void OnEnable()
         {
             _transformInfos = serializedObject.FindProperty(nameof(DeformInfo.transformInfos));
+            _eyePosition = serializedObject.FindProperty(nameof(DeformInfo.eyePosition));
         }
 
         public override void OnInspectorGUI()
         {
-            GUILayout.Label("Transforms", EditorStyles.boldLabel);
             importFrom = EditorGUILayout.ObjectField("Import", importFrom, typeof(GameObject), true) as GameObject;
             if (importFrom && GUILayout.Button("Import From GameObject"))
             {
                 ImportFromGameObject(importFrom);
+                var avatarDescriptor = importFrom.GetComponent<VRCAvatarDescriptor>();
+                if (avatarDescriptor)
+                    _eyePosition.vector3Value = avatarDescriptor.ViewPosition;
             }
 
+            EditorGUILayout.PropertyField(_eyePosition);
+            GUILayout.Label("Transforms", EditorStyles.boldLabel);
             if (_transformInfos.arraySize != 0)
             {
                 var rootProperty = _transformInfos.GetArrayElementAtIndex(0);

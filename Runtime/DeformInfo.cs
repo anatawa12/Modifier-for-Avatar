@@ -7,7 +7,7 @@ namespace Anatawa12.Modifier4Avatar
     class DeformInfo : ScriptableObject
     {
         public TransformInfo[] transformInfos;
-        // TODO: blendShape
+        public Vector3 eyePosition;
 
         public void Apply(Transform transform)
         {

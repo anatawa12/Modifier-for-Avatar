@@ -33,11 +33,11 @@ namespace Anatawa12.Modifier4Avatar.Editor
                 .AfterPlugin("nadena.dev.modular-avatar")
                 .Run("Defromer", ctx =>
                 {
-                    foreach (var deformer in ctx.AvatarRootObject.GetComponentsInChildren<Deformer>(true))
-                    {
-                        deformer.info.Apply(deformer.transform);
-                        Object.DestroyImmediate(deformer);
-                    }
+                    var deformer = ctx.AvatarRootObject.GetComponent<Deformer>();
+                    if (!deformer) return;
+                    deformer.info.Apply(deformer.transform);
+                    ctx.AvatarDescriptor.ViewPosition = deformer.info.eyePosition;
+                    Object.DestroyImmediate(deformer);
                 });
         }
     }
