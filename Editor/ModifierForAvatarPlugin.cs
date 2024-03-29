@@ -1,6 +1,11 @@
+using System;
+using System.Collections.Generic;
 using Anatawa12.Modifier4Avatar.Editor;
 using nadena.dev.ndmf;
+using nadena.dev.ndmf.localization;
+using Unity.Collections;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 [assembly:ExportsPlugin(typeof(ModifierForAvatarPlugin))]
 
@@ -10,6 +15,55 @@ namespace Anatawa12.Modifier4Avatar.Editor
     {
         protected override void Configure()
         {
+            InPhase(BuildPhase.Transforming)
+                .BeforePlugin("nadena.dev.modular-avatar")
+                .Run("MakeSkinnedMesh", ctx =>
+                {
+                    foreach (var makeSkinnedMesh in ctx.AvatarRootObject.GetComponentsInChildren<MakeSkinnedMesh>())
+                    {
+                        var meshRenderer = makeSkinnedMesh.GetComponent<MeshRenderer>();
+                        var meshFilter = makeSkinnedMesh.GetComponent<MeshFilter>();
+                        if (!meshRenderer || !meshFilter)
+                        {
+                            Object.DestroyImmediate(makeSkinnedMesh);
+                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error, "MakeSkinnedMesh: no MeshRenderer or MeshFilter", makeSkinnedMesh);
+                            continue;
+                        }
+
+                        var skinnedMeshRenderer = makeSkinnedMesh.gameObject.AddComponent<SkinnedMeshRenderer>();
+                        var mesh = skinnedMeshRenderer.sharedMesh;
+                        var meshName = mesh.name;
+                        mesh = Object.Instantiate(mesh);
+                        skinnedMeshRenderer.sharedMesh = mesh;
+                        mesh.name = meshName + " (Originally static)";
+
+                        var transform = makeSkinnedMesh.transform;
+
+                        skinnedMeshRenderer.rootBone = transform;
+                        skinnedMeshRenderer.bones = new[] { transform };
+
+                        mesh.bindposes = new[] { Matrix4x4.identity };
+
+                        var vertexCount = mesh.vertexCount;
+                        using (var bonesPerVertex1 = new NativeArray<byte>(vertexCount, Allocator.Temp))
+                        using (var weights1 = new NativeArray<BoneWeight1>(vertexCount, Allocator.Temp))
+                        {
+                            var bonesPerVertex = bonesPerVertex1;
+                            var weights = weights1;
+                            for (var i = 0; i < vertexCount; i++)
+                            {
+                                bonesPerVertex[i] = 1;
+                                weights[i] = new BoneWeight1 { boneIndex = 0, weight = 1 };
+                            }
+
+                            mesh.SetBoneWeights(bonesPerVertex, weights);
+                        }
+
+                        Object.DestroyImmediate(makeSkinnedMesh);
+                        Object.DestroyImmediate(meshFilter);
+                    }
+                });
+
             InPhase(BuildPhase.Transforming)
                 .BeforePlugin("net.narazaka.vrchat.floor_adjuster")
                 .AfterPlugin("nadena.dev.modular-avatar")
@@ -40,5 +94,8 @@ namespace Anatawa12.Modifier4Avatar.Editor
                     Object.DestroyImmediate(deformer);
                 });
         }
+
+        public static Localizer Localizer { get; } = new Localizer("en-us",
+            () => new List<(string, Func<string, string>)> { ("en-us", key => key) });
     }
 }
