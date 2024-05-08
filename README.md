@@ -36,9 +36,9 @@ Set the GameObject to `Import` and click `Import from GameObject`.
 
 This component is to generate BlendShape that removes eye from BlendShape for something like `> <`.
 
-This component is intended be used with `M4A Add Manga Expression Frame`
+This component is intended be used with `M4A Add Manga Expression BlendShape`
 
-### M4A Add Manga Expression Frame
+### M4A Add Manga Expression BlendShape
 
 This component is to add polygons to avatar to make manga-like expression.
 
