@@ -7,7 +7,7 @@ using Unity.Collections;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-[assembly:ExportsPlugin(typeof(ModifierForAvatarPlugin))]
+[assembly: ExportsPlugin(typeof(ModifierForAvatarPlugin))]
 
 namespace Anatawa12.Modifier4Avatar.Editor
 {
@@ -26,7 +26,8 @@ namespace Anatawa12.Modifier4Avatar.Editor
                         if (!meshRenderer || !meshFilter)
                         {
                             Object.DestroyImmediate(makeSkinnedMesh);
-                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error, "MakeSkinnedMesh: no MeshRenderer or MeshFilter", makeSkinnedMesh);
+                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error,
+                                "MakeSkinnedMesh: no MeshRenderer or MeshFilter", makeSkinnedMesh);
                             continue;
                         }
 
@@ -92,6 +93,35 @@ namespace Anatawa12.Modifier4Avatar.Editor
                     deformer.info.Apply(deformer.transform);
                     ctx.AvatarDescriptor.ViewPosition = deformer.info.eyePosition;
                     Object.DestroyImmediate(deformer);
+                });
+
+            // mesh editor
+            InPhase(BuildPhase.Transforming)
+                .Run("RemoveEyeBlendShapeGenerator", ctx =>
+                {
+                    foreach (var config in ctx.AvatarRootObject.GetComponentsInChildren<GenerateRemoveEyeBlendShape>())
+                    {
+                        var renderer = config.GetComponent<SkinnedMeshRenderer>();
+                        var mesh = renderer.sharedMesh;
+                        if (!mesh)
+                        {
+                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error,
+                                "RemoveEyeBlendShapeGenerator: no mesh", config);
+                            continue;
+                        }
+
+                        if (!ctx.IsTemporaryAsset(mesh))
+                        {
+                            mesh = Object.Instantiate(mesh);
+                            renderer.sharedMesh = mesh;
+                        }
+
+                        new RemoveEyeBlendShapeGenerator(
+                            mesh,
+                            config
+                        ).Generate();
+                        Object.DestroyImmediate(config);
+                    }
                 });
         }
 

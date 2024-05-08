@@ -31,3 +31,16 @@ You can create this asset from `Create/M4A Deform Info`
 
 Simple way to configure this is to import deformed avatar.
 Set the GameObject to `Import` and click `Import from GameObject`.
+
+### M4A Generate Remove Eye Blend Shape
+
+This component is to generate BlendShape that removes eye from BlendShape for something like `> <`.
+
+This component is intended be used with `M4A Add Manga Expression Frame`
+
+### M4A Add Manga Expression Frame
+
+This component is to add polygons to avatar to make manga-like expression.
+
+Not implemented
+
