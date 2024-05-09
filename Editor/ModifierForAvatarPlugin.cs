@@ -7,7 +7,7 @@ using Unity.Collections;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-[assembly:ExportsPlugin(typeof(ModifierForAvatarPlugin))]
+[assembly: ExportsPlugin(typeof(ModifierForAvatarPlugin))]
 
 namespace Anatawa12.Modifier4Avatar.Editor
 {
@@ -26,7 +26,8 @@ namespace Anatawa12.Modifier4Avatar.Editor
                         if (!meshRenderer || !meshFilter)
                         {
                             Object.DestroyImmediate(makeSkinnedMesh);
-                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error, "MakeSkinnedMesh: no MeshRenderer or MeshFilter", makeSkinnedMesh);
+                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error,
+                                "MakeSkinnedMesh: no MeshRenderer or MeshFilter", makeSkinnedMesh);
                             continue;
                         }
 
@@ -62,7 +63,57 @@ namespace Anatawa12.Modifier4Avatar.Editor
                         Object.DestroyImmediate(makeSkinnedMesh);
                         Object.DestroyImmediate(meshFilter);
                     }
-                });
+                })
+                .Then.Run("RemoveEyeBlendShapeGenerator", ctx =>
+                {
+                    foreach (var config in ctx.AvatarRootObject.GetComponentsInChildren<GenerateRemoveEyeBlendShape>())
+                    {
+                        var renderer = config.GetComponent<SkinnedMeshRenderer>();
+                        var mesh = renderer.sharedMesh;
+                        if (!mesh)
+                        {
+                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error,
+                                "RemoveEyeBlendShapeGenerator: no mesh", config);
+                            continue;
+                        }
+
+                        if (!ctx.IsTemporaryAsset(mesh))
+                        {
+                            mesh = Object.Instantiate(mesh);
+                            renderer.sharedMesh = mesh;
+                        }
+
+                        new RemoveEyeBlendShapeGenerator(
+                            mesh,
+                            config
+                        ).Generate();
+                        Object.DestroyImmediate(config);
+                    }
+                })
+                .Then.Run("MangaExpressionBlendShapeGenerator", ctx =>
+                {
+                    foreach (var config in ctx.AvatarRootObject.GetComponentsInChildren<AddMangaExpressionBlendShape>())
+                    {
+                        var renderer = config.GetComponent<SkinnedMeshRenderer>();
+                        var mesh = renderer.sharedMesh;
+                        if (!mesh)
+                        {
+                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error,
+                                "MangaBlendShapeGeneartor: no mesh", config);
+                            continue;
+                        }
+
+                        if (!ctx.IsTemporaryAsset(mesh))
+                        {
+                            mesh = Object.Instantiate(mesh);
+                            renderer.sharedMesh = mesh;
+                        }
+
+                        AddMangaExpressionBlendShapeGenerator.Generate(mesh, renderer, config);
+                        Object.DestroyImmediate(config);
+                    }
+                })
+                ;
 
             InPhase(BuildPhase.Transforming)
                 .BeforePlugin("net.narazaka.vrchat.floor_adjuster")
