@@ -122,7 +122,31 @@ namespace Anatawa12.Modifier4Avatar.Editor
                         ).Generate();
                         Object.DestroyImmediate(config);
                     }
-                });
+                })
+                .Then.Run("MangaExpressionBlendShapeGenerator", ctx =>
+                {
+                    foreach (var config in ctx.AvatarRootObject.GetComponentsInChildren<AddMangaExpressionBlendShape>())
+                    {
+                        var renderer = config.GetComponent<SkinnedMeshRenderer>();
+                        var mesh = renderer.sharedMesh;
+                        if (!mesh)
+                        {
+                            ErrorReport.ReportError(Localizer, ErrorSeverity.Error,
+                                "MangaBlendShapeGeneartor: no mesh", config);
+                            continue;
+                        }
+
+                        if (!ctx.IsTemporaryAsset(mesh))
+                        {
+                            mesh = Object.Instantiate(mesh);
+                            renderer.sharedMesh = mesh;
+                        }
+
+                        AddMangaExpressionBlendShapeGenerator.Generate(mesh, renderer, config);
+                        Object.DestroyImmediate(config);
+                    }
+                })
+                ;
         }
 
         public static Localizer Localizer { get; } = new Localizer("en-us",
