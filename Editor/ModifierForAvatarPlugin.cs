@@ -63,41 +63,8 @@ namespace Anatawa12.Modifier4Avatar.Editor
                         Object.DestroyImmediate(makeSkinnedMesh);
                         Object.DestroyImmediate(meshFilter);
                     }
-                });
-
-            InPhase(BuildPhase.Transforming)
-                .BeforePlugin("net.narazaka.vrchat.floor_adjuster")
-                .AfterPlugin("nadena.dev.modular-avatar")
-                .WithRequiredExtension(typeof(PathMapperContext), seq =>
-                {
-                    seq
-                        .Run("MakeChildren", ctx =>
-                        {
-                            foreach (var makeChildren in ctx.AvatarRootObject.GetComponentsInChildren<MakeChildren>())
-                            {
-                                foreach (var child in makeChildren.children)
-                                    child.parent = makeChildren.transform;
-                                Object.DestroyImmediate(makeChildren);
-                            }
-                        })
-                        ;
-                });
-
-            InPhase(BuildPhase.Transforming)
-                .BeforePlugin("net.narazaka.vrchat.floor_adjuster")
-                .AfterPlugin("nadena.dev.modular-avatar")
-                .Run("Defromer", ctx =>
-                {
-                    var deformer = ctx.AvatarRootObject.GetComponent<Deformer>();
-                    if (!deformer) return;
-                    deformer.info.Apply(deformer.transform);
-                    ctx.AvatarDescriptor.ViewPosition = deformer.info.eyePosition;
-                    Object.DestroyImmediate(deformer);
-                });
-
-            // mesh editor
-            InPhase(BuildPhase.Transforming)
-                .Run("RemoveEyeBlendShapeGenerator", ctx =>
+                })
+                .Then.Run("RemoveEyeBlendShapeGenerator", ctx =>
                 {
                     foreach (var config in ctx.AvatarRootObject.GetComponentsInChildren<GenerateRemoveEyeBlendShape>())
                     {
@@ -147,6 +114,36 @@ namespace Anatawa12.Modifier4Avatar.Editor
                     }
                 })
                 ;
+
+            InPhase(BuildPhase.Transforming)
+                .BeforePlugin("net.narazaka.vrchat.floor_adjuster")
+                .AfterPlugin("nadena.dev.modular-avatar")
+                .WithRequiredExtension(typeof(PathMapperContext), seq =>
+                {
+                    seq
+                        .Run("MakeChildren", ctx =>
+                        {
+                            foreach (var makeChildren in ctx.AvatarRootObject.GetComponentsInChildren<MakeChildren>())
+                            {
+                                foreach (var child in makeChildren.children)
+                                    child.parent = makeChildren.transform;
+                                Object.DestroyImmediate(makeChildren);
+                            }
+                        })
+                        ;
+                });
+
+            InPhase(BuildPhase.Transforming)
+                .BeforePlugin("net.narazaka.vrchat.floor_adjuster")
+                .AfterPlugin("nadena.dev.modular-avatar")
+                .Run("Defromer", ctx =>
+                {
+                    var deformer = ctx.AvatarRootObject.GetComponent<Deformer>();
+                    if (!deformer) return;
+                    deformer.info.Apply(deformer.transform);
+                    ctx.AvatarDescriptor.ViewPosition = deformer.info.eyePosition;
+                    Object.DestroyImmediate(deformer);
+                });
         }
 
         public static Localizer Localizer { get; } = new Localizer("en-us",
