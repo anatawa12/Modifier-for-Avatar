@@ -7,6 +7,8 @@ namespace Anatawa12.Modifier4Avatar
     public class AddMangaExpressionBlendShape : MonoBehaviour
     {
         public string newBlendShapeName = "newBlendShape";
+        public bool normalBlendShape = false;
+        public bool tangentBlendShape = false;
         public CombineBlendShape[] combineBlendShapes = Array.Empty<CombineBlendShape>();
         public AddMeshes[] addMeshes = Array.Empty<AddMeshes>();
 

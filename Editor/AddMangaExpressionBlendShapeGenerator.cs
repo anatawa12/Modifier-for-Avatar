@@ -25,7 +25,8 @@ namespace Anatawa12.Modifier4Avatar.Editor
             for (var i = 0; i < config.addMeshes.Length; i++)
             {
                 var addMesh = config.addMeshes[i];
-                var data = GenerateAdditionalMeshData(originalData, renderer, addMesh, vertexIndexOffset);
+                var data = GenerateAdditionalMeshData(originalData, renderer, addMesh, vertexIndexOffset,
+                    config.normalBlendShape, config.tangentBlendShape);
                 additionalMeshes[i] = data;
                 mergeMeshes[addMesh.materialIndex].Add(data);
                 vertexIndexOffset += data.vertices.Length;
@@ -191,7 +192,9 @@ namespace Anatawa12.Modifier4Avatar.Editor
             MeshData originalMesh,
             SkinnedMeshRenderer renderer,
             AddMangaExpressionBlendShape.AddMeshes addMesh,
-            int vertexIndexOffset
+            int vertexIndexOffset,
+            bool blendShapeWithNormals,
+            bool blendShapeWithTangents
         )
         {
             var boneIndex = Array.IndexOf(renderer.bones, addMesh.bone);
@@ -220,11 +223,22 @@ namespace Anatawa12.Modifier4Avatar.Editor
             for (var i = 0; i < addMeshData.vertices.Length; i++)
             {
                 addMeshData.vertices[i] = hiddenTransform.MultiplyPoint3x4(addMeshData.vertices[i]);
-                addMeshData.normals[i] = hiddenTransform.MultiplyVector(addMeshData.normals[i]);
-                var tangent = addMeshData.tangents[i];
-                Vector4 tangentNew = hiddenTransform.MultiplyVector(tangent);
-                tangentNew.w = tangent.w;
-                addMeshData.tangents[i] = tangentNew;
+                if (blendShapeWithNormals)
+                    addMeshData.normals[i] = hiddenTransform.MultiplyVector(addMeshData.normals[i]);
+                else
+                    addMeshData.normals[i] = visibleNormal[i];
+                
+                if (blendShapeWithTangents)
+                {
+                    var tangent = addMeshData.tangents[i];
+                    Vector4 tangentNew = hiddenTransform.MultiplyVector(tangent);
+                    tangentNew.w = tangent.w;
+                    addMeshData.tangents[i] = tangentNew;
+                }
+                else
+                {
+                    addMeshData.tangents[i] = visibleTangent[i];
+                }
             }
 
             // generate blend shape to transform to visible position
