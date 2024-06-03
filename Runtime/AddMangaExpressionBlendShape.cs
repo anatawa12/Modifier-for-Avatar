@@ -1,10 +1,11 @@
 using System;
 using UnityEngine;
+using VRC.SDKBase;
 
 namespace Anatawa12.Modifier4Avatar
 {
     [AddComponentMenu("Avatar Modifier/M4A Add Manga Expression Blend Shape")]
-    public class AddMangaExpressionBlendShape : MonoBehaviour
+    public class AddMangaExpressionBlendShape : MonoBehaviour, IEditorOnly
     {
         public string newBlendShapeName = "newBlendShape";
         public bool normalBlendShape = false;
