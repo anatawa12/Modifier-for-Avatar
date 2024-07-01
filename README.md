@@ -44,3 +44,9 @@ This component is to add polygons to avatar to make manga-like expression.
 
 Not implemented
 
+### M4A Arrange lilToon Light Settings
+
+This component is to arrange/set up lilToon light settings
+
+All light settings will be overriden by this component.
+
