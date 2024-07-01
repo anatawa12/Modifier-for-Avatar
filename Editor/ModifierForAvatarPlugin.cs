@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Anatawa12.Modifier4Avatar.Editor;
+using lilToon;
 using nadena.dev.ndmf;
 using nadena.dev.ndmf.localization;
 using Unity.Collections;
@@ -144,6 +145,78 @@ namespace Anatawa12.Modifier4Avatar.Editor
                     ctx.AvatarDescriptor.ViewPosition = deformer.info.eyePosition;
                     Object.DestroyImmediate(deformer);
                 });
+
+            ConfigureArrangeLilToonLightSettings();
+        }
+
+        private void ConfigureArrangeLilToonLightSettings()
+        {
+#if LILTOON
+
+            InPhase(BuildPhase.Transforming)
+                .Run("ArrangeLilToonLightSettings", ctx =>
+                {
+                    var settings = ctx.AvatarRootObject.GetComponentsInChildren<ArrangeLilToonLightSettings>();
+                    if (settings.Length == 0) return;
+                    if (settings.Length != 1)
+                    {
+                        ErrorReport.ReportError(Localizer, ErrorSeverity.Error,
+                            "There are multiple ArrangeLilToonLightSettings", settings[0]);
+                        return;
+                    }
+                    var setting = settings[0];
+                    if (setting.gameObject != ctx.AvatarRootObject)
+                    {
+                        ErrorReport.ReportError(Localizer, ErrorSeverity.Error,
+                            "ArrangeLilToonLightSettings is not on root", setting);
+                        return;
+                    }
+
+                    var materialMapping = new Dictionary<Material, Material>();
+
+                    foreach (var renderer in ctx.AvatarRootObject.GetComponentsInChildren<Renderer>())
+                    {
+                        var sharedMaterials = renderer.sharedMaterials;
+                        for (var i = 0; i < sharedMaterials.Length; i++)
+                        {
+                            var material = sharedMaterials[i];
+                            if (lilMaterialUtils.CheckShaderIslilToon(material))
+                            {
+                                if (materialMapping.TryGetValue(material, out var newMaterial))
+                                {
+                                    sharedMaterials[i] = newMaterial;
+                                    continue;
+                                }
+
+                                if (!ctx.IsTemporaryAsset(material))
+                                {
+                                    var originalName = material.name;
+                                    material = Object.Instantiate(material);
+                                    material.name = $"{originalName} (M4A Arranged)";
+                                    sharedMaterials[i] = material;
+                                }
+
+                                materialMapping.Add(material, material);
+
+                                material.SetFloat(LiltoonProps.LightMinLimit, setting.minLimit);
+                                material.SetFloat(LiltoonProps.LightMaxLimit, setting.maxLimit);
+                                material.SetFloat(LiltoonProps.MonochromeLighting, setting.monochromeLighting);
+                                material.SetFloat(LiltoonProps.ShadowEnvStrength, setting.environmentStrength);
+
+                                material.SetFloat(LiltoonProps.AsUnlit, setting.asUnlit);
+                                material.SetFloat(LiltoonProps.VertexLightStrength, setting.vertexLightStrength);
+                                material.SetVector(LiltoonProps.LightDirectionOverride, setting.LightStrengthOverrideVector4);
+                                material.SetInt(LiltoonProps.BlendOpFa, (int)setting.blendOp);
+                            }
+                        }
+
+                        renderer.sharedMaterials = sharedMaterials;
+                    }
+
+                    // TODO: material swap animation support
+                    Object.DestroyImmediate(setting);
+                });
+#endif
         }
 
         public static Localizer Localizer { get; } = new Localizer("en-us",

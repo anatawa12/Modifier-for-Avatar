@@ -11,6 +11,12 @@
     ],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "jp.lilxyzw.liltoon",
+            "expression": "",
+            "define": "LILTOON"
+        }
+    ],
     "noEngineReferences": false
 }
