@@ -187,16 +187,16 @@ namespace Anatawa12.Modifier4Avatar.Editor
                                     sharedMaterials[i] = newMaterial;
                                     continue;
                                 }
+                                var originalMaterial = material;
 
                                 if (!ctx.IsTemporaryAsset(material))
                                 {
-                                    var originalName = material.name;
                                     material = Object.Instantiate(material);
-                                    material.name = $"{originalName} (M4A Arranged)";
+                                    material.name = $"{originalMaterial.name} (M4A Arranged)";
                                     sharedMaterials[i] = material;
                                 }
 
-                                materialMapping.Add(material, material);
+                                materialMapping.Add(originalMaterial, material);
 
                                 material.SetFloat(LiltoonProps.LightMinLimit, setting.minLimit);
                                 material.SetFloat(LiltoonProps.LightMaxLimit, setting.maxLimit);
