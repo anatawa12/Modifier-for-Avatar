@@ -192,6 +192,7 @@ namespace Anatawa12.Modifier4Avatar.Editor
                                 if (!ctx.IsTemporaryAsset(material))
                                 {
                                     material = Object.Instantiate(material);
+                                    ObjectRegistry.RegisterReplacedObject(originalMaterial, material);
                                     material.name = $"{originalMaterial.name} (M4A Arranged)";
                                     sharedMaterials[i] = material;
                                 }
