@@ -1,5 +1,8 @@
 {
   "name": "com.anatawa12.modifier-for-avatar",
   "version": "0.0.0",
+  "dependencies": {
+    "com.unity.mathematics": "1.3.2"
+  },
   "displayName": "Modifier for Avatar"
 }

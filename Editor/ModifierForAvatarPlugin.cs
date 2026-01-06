@@ -147,6 +147,19 @@ namespace Anatawa12.Modifier4Avatar.Editor
                 });
 
             ConfigureArrangeLilToonLightSettings();
+
+            InPhase(BuildPhase.Transforming)
+                .AfterPlugin("nadena.dev.modular-avatar")
+                .Run("ConstraintToReducePhysBone", ctx =>
+                {
+                    var processor = new ConstraintToReducePhysBoneProcessor(ctx.AvatarRootObject);
+
+                    foreach (var component in ctx.AvatarRootObject.GetComponentsInChildren<ConstraintToReducePhysBone>(true))
+                    {
+                        processor.Process(component);
+                        Object.DestroyImmediate(component);
+                    }
+                });
         }
 
         private void ConfigureArrangeLilToonLightSettings()

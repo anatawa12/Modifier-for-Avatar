@@ -5,6 +5,7 @@
         "nadena.dev.ndmf",
         "nadena.dev.ndmf.runtime",
         "lilToon.Editor",
+        "Unity.Mathematics",
         "com.anatawa12.modifier-for-avatar.runtime"
     ],
     "includePlatforms": [
@@ -14,6 +15,8 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
+        "VRC.Dynamics.dll",
+        "VRC.SDK3.Dynamics.Constraint.dll",
         "VRCSDK3A.dll",
         "VRCSDKBase.dll"
     ],

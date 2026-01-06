@@ -50,3 +50,12 @@ This component is to arrange/set up lilToon light settings
 
 All light settings will be overriden by this component.
 
+### M4A Constraint To Reduce PhysBone
+
+This component replaces PhysBone for skirt or hair to constraint components to reduce calculation cost.
+
+As far as VRChat team says, VRCConstraint components are cheaper than PhysBone components.
+
+For skirts, there are many PhysBone components that sway similarly.
+Therefore, this component reduces PhysBone components (or affected bones) and sways the reduced bones with VRCConstraint components
+based on silbing PhysBone components.
