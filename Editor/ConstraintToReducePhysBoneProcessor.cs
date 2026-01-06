@@ -108,11 +108,11 @@ namespace Anatawa12.Modifier4Avatar.Editor
                 });
             }
             
+            constraint.SolveInLocalSpace = solveInLocalSpace;
             constraint.Locked = false;
             constraint.IsActive = true;
             Reflections.TryBakeCurrentOffsetsRuntime(constraint, VRCConstraintBase.BakeOptions.BakeAll);
             constraint.Locked = true;
-            constraint.SolveInLocalSpace = solveInLocalSpace;
 
             var targetChildren = target.OfType<Transform>().Where(physBoneMap.ContainsKey).ToArray();
             if (targetChildren.Length == 0) return;
