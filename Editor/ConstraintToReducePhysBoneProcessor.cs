@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using nadena.dev.ndmf;
 using Unity.Mathematics;
@@ -16,6 +17,7 @@ namespace Anatawa12.Modifier4Avatar.Editor
     public readonly struct ConstraintToReducePhysBoneProcessor
     {
         private readonly Dictionary<Transform, VRCPhysBoneBase> physBoneMap;
+        private readonly Dictionary<Transform, Transform> rollFixMap;
 
         public ConstraintToReducePhysBoneProcessor(GameObject avatar)
         {
@@ -35,15 +37,26 @@ namespace Anatawa12.Modifier4Avatar.Editor
                     foreach (Transform child in t) AddToMap(child);
                 }
             }
+
             this.physBoneMap = physBoneMap;
+            rollFixMap = new Dictionary<Transform, Transform>();
         }
+
+        [return:NotNullIfNotNull("t")]
+        private Transform? GetFixed(Transform? t) => t == null ? null : rollFixMap.GetValueOrDefault(t, t);
 
         public void Process(ConstraintToReducePhysBone component)
         {
             var transform = component.transform;
             var children = transform.OfType<Transform>().Where(physBoneMap.ContainsKey).ToArray();
 
-            Transform[] pbChains = component.pbChains.Where(x => x != null).ToArray()!;
+            if (component.rollFix)
+            {
+                DoRollFix(children);
+                children = children.Select(GetFixed).ToArray();
+            }
+
+            Transform[] pbChains = component.pbChains.Where(x => x != null).Select(GetFixed).ToArray()!;
 
             if (pbChains.Any(x => !children.Contains(x)))
             {
@@ -95,6 +108,210 @@ namespace Anatawa12.Modifier4Avatar.Editor
             }
         }
 
+        private void DoRollFix(Transform[] children)
+        {
+            var fixedPhysBones = new HashSet<VRCPhysBoneBase>();
+            foreach (var child in children)
+            {
+                var physBone = physBoneMap[child];
+                if (fixedPhysBones.Contains(physBone)) continue;
+                FixYawPitch(physBone);
+                fixedPhysBones.Add(physBone);
+            }
+        }
+
+        // based on https://github.com/anatawa12/AvatarOptimizer/blob/e6c31243afa0db51b05570c18a7d9f491c90f467/Editor/Processors/MergePhysBoneProcessor.cs#L307
+        void FixYawPitch(VRCPhysBoneBase physBone)
+        {
+            // Already fixed; nothing to do!
+            if (physBone.limitRotation.y.Equals(0.0f)) return;
+
+            var originalBones = new List<Transform>();
+
+            physBone.InitTransforms(true);
+            var pbRoot = physBone.GetRootTransform();
+
+            var ignoreTransforms = new HashSet<Transform>(physBone.ignoreTransforms);
+
+            var newRoot = RotateRecursive(physBone, pbRoot, pbRoot.parent, 0, ignoreTransforms, originalBones);
+
+            physBone.rootTransform = newRoot;
+            physBone.ignoreTransforms.AddRange(originalBones);
+
+            var chainLength = physBone.maxBoneChainIndex + (physBone.endpointPosition != Vector3.zero ? 1 : 0);
+            var yaws = new float[chainLength];
+            float fixedRollOfLastBone = 0;
+            var pitches = new float[chainLength];
+
+            for (var i = 0; i < chainLength; i++)
+            {
+                var rotationSpecified = physBone.CalcLimitRotation((float)i / (chainLength - 1));
+                var rotation = ConvertRotation(rotationSpecified);
+                pitches[i] = rotation.x;
+                fixedRollOfLastBone = rotation.y;
+                yaws[i] = rotation.z;
+            }
+
+            var maxPitch = pitches.Select(Mathf.Abs).Max();
+            var maxYaw = yaws.Select(Mathf.Abs).Max();
+
+            physBone.limitRotation = new Vector3(maxPitch, 0, maxYaw);
+
+            if (maxPitch != 0 || maxYaw != 0)
+            {
+                // avoid NaN
+                if (maxPitch == 0) maxPitch = 1;
+                if (maxYaw == 0) maxYaw = 1;
+
+                var pitchCurve = new AnimationCurve();
+                var yawCurve = new AnimationCurve();
+
+                pitchCurve.AddKey(0, pitches[0] / maxPitch);
+                yawCurve.AddKey(0, yaws[0] / maxYaw);
+
+                for (var i = 0; i < chainLength; i++)
+                {
+                    var time = (float)(i + 1) / chainLength;
+                    pitchCurve.AddKey(time, pitches[i] / maxPitch);
+                    yawCurve.AddKey(time, yaws[i] / maxYaw);
+                }
+
+                physBone.limitRotationXCurve = pitchCurve;
+                physBone.limitRotationZCurve = yawCurve;
+            }
+
+            if (physBone.endpointPosition != Vector3.zero)
+            {
+                // TODO: this Endpoint Fix might not enough
+                // Rotation fix will conflict with this fix
+                physBone.endpointPosition = Quaternion.Euler(0, -fixedRollOfLastBone, 0) * physBone.endpointPosition;
+            }
+        }
+
+        Transform RotateRecursive(VRCPhysBoneBase physBone,
+            Transform transform,
+            Transform parent,
+            int depth,
+            HashSet<Transform> ignoreTransforms,
+            List<Transform> originalBones)
+        {
+            Vector3 targetLocation;
+
+            var activeChildren = Enumerable.Range(0, transform.childCount)
+                .Select(transform.GetChild)
+                .Where(child => !ignoreTransforms.Contains(child))
+                .ToArray();
+
+            switch (activeChildren.Length)
+            {
+                case 0:
+                    // end bone
+                    if (physBone.endpointPosition != Vector3.zero)
+                        targetLocation = physBone.endpointPosition;
+                    else
+                        targetLocation = Vector3.up;
+                    break;
+                case 1:
+                    targetLocation = activeChildren[0].localPosition;
+                    break;
+                default:
+                    switch (physBone.multiChildType)
+                    {
+                        case VRCPhysBoneBase.MultiChildType.Ignore:
+                            targetLocation = Vector3.up;
+                            break;
+                        case VRCPhysBoneBase.MultiChildType.First:
+                            targetLocation = activeChildren[0].localPosition;
+                            break;
+                        case VRCPhysBoneBase.MultiChildType.Average:
+                            targetLocation =
+                                activeChildren.Aggregate(Vector3.zero,
+                                    (current, child) => current + child.localPosition) /
+                                activeChildren.Length;
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+
+                    break;
+            }
+
+            var specifiedRotation = physBone.CalcLimitRotation(physBone.CalcBoneRatio(depth));
+            var rotation = ConvertRotation(specifiedRotation).y;
+
+            // if the bone is at (0, -x, 0), we have infinite rotation for `FromToRotation` and
+            // `Quaternion.FromToRotation`'s choice is not happy for logic below.
+            // We need special handling for this case.
+            var dot = Vector3.Dot(Vector3.up, math.normalizesafe(targetLocation));
+            var critical = dot <= -1;
+
+            //Debug.Log($"is critical: {critical}, dot: {dot}, transform: {transform.name}");
+            var thisRotation = !critical ? rotation : -rotation;
+
+            // create new (actual) bone
+            var newBone = new GameObject($"{transform.name} (M4A C2ReducePB Proxy)");
+
+            rollFixMap[transform] = newBone.transform;
+            physBoneMap.Remove(transform);
+            physBoneMap[newBone.transform] = physBone;
+
+            // new bone should be at exactly same transform as the original bone
+            newBone.transform.parent = transform;
+            newBone.transform.localPosition = Vector3.zero;
+            newBone.transform.localRotation = Quaternion.identity;
+            newBone.transform.localScale = Vector3.one;
+
+            // move to parent
+            newBone.transform.SetParent(parent, true);
+
+            // rotate newBone to fix roll
+            newBone.transform.Rotate(Vector3.up, thisRotation, Space.Self);
+
+            // move old bone to child of newBone
+            transform.SetParent(newBone.transform, true);
+
+            originalBones.Add(transform);
+
+            //var rotationQuaternion = Quaternion.Euler(0, -thisRotation, 0);
+
+            foreach (var child in activeChildren)
+            {
+                //child.localPosition = rotationQuaternion * child.localPosition;
+                //child.localRotation = rotationQuaternion * child.localRotation;
+
+                if (ignoreTransforms.Contains(child)) continue;
+                RotateRecursive(physBone, child, newBone.transform, depth + 1, ignoreTransforms,
+                    originalBones);
+            }
+
+            return newBone.transform;
+        }
+
+        static Vector3 ConvertRotation(Vector3 limitRotation)
+        {
+            // XYZ is the order used in VRCPhysBone
+            var quat = quaternion.EulerXYZ(limitRotation * Mathf.Deg2Rad);
+            return QuaternionToEulerXZY(quat) * Mathf.Rad2Deg;
+        }
+
+        static Vector3 QuaternionToEulerXZY(Quaternion q)
+        {
+            // Quaternion to Euler
+            // https://qiita.com/aa_debdeb/items/abe90a9bd0b4809813da
+            // YZX Order in the article. (XZY in Unity)
+            // We use different perspective to represent same order of Euler order between Unity and the article.
+            var sz = 2 * q.x * q.y + 2 * q.z * q.w;
+            var unlocked = Mathf.Abs(sz) < 0.99999f;
+            Debug.Log("unlocked: " + unlocked);
+            return new Vector3(
+                unlocked ? Mathf.Atan2(-(2 * q.y * q.z - 2 * q.x * q.w), 2 * q.w * q.w + 2 * q.y * q.y - 1) : 0,
+                unlocked
+                    ? Mathf.Atan2(-(2 * q.x * q.z - 2 * q.y * q.w), 2 * q.w * q.w + 2 * q.x * q.x - 1)
+                    : Mathf.Atan2(2 * q.x * q.z + 2 * q.y * q.w, 2 * q.w * q.w + 2 * q.z * q.z - 1),
+                Mathf.Asin(sz)
+            );
+        }
+
         private void CreateConstraintChain(Transform target, List<(Transform source, float weight)> sources,
             bool solveInLocalSpace)
         {
@@ -107,7 +324,7 @@ namespace Anatawa12.Modifier4Avatar.Editor
                     Weight = source.weight,
                 });
             }
-            
+
             constraint.SolveInLocalSpace = solveInLocalSpace;
             constraint.Locked = false;
             constraint.IsActive = true;
@@ -122,6 +339,7 @@ namespace Anatawa12.Modifier4Avatar.Editor
                     "ConstraintToReducePhysBone: Created constraint target has multiple PhysBone-affected children. Only first child is constrained.",
                     target);
             }
+
             var childSources = new List<(Transform source, float weight)>();
             foreach (var source in sources)
             {
@@ -133,8 +351,10 @@ namespace Anatawa12.Modifier4Avatar.Editor
                         "ConstraintToReducePhysBone: Created constraint source has multiple PhysBone-affected children. Only first child is used as source.",
                         source.source);
                 }
+
                 childSources.Add((sourceChildren[0], source.weight));
             }
+
             if (childSources.Count == 0) return;
 
             CreateConstraintChain(targetChildren[0], childSources, solveInLocalSpace);
@@ -161,7 +381,7 @@ namespace Anatawa12.Modifier4Avatar.Editor
             // We expect to use this component on skirt bones, so we assume that the targets and sources
             // are similarly on plane and on a circle-like layout.
             // Each target should be influenced by the nearest two sources on the circle.
-            
+
             // Therefore, we first fit a plane to the points.
             // Second, create one representative axis on the plane, and sort transforms based on the angle on the axis.
             // Finally, assign each target to the nearest two sources on the sorted list.
@@ -201,6 +421,7 @@ namespace Anatawa12.Modifier4Avatar.Editor
                             (rightSource, weightRight),
                         }));
                     }
+
                     leftSrcIndex = rightSrcIndex;
                     if (leftSrcIndex == 0) break; // Lucky break: completed full circle
                 }
@@ -260,7 +481,9 @@ namespace Anatawa12.Modifier4Avatar.Editor
 
         private static class Reflections
         {
-            public delegate void TryBakeCurrentOffsetsRuntimeType(VRCConstraintBase constraint, VRCConstraintBase.BakeOptions bakeOptions);
+            public delegate void TryBakeCurrentOffsetsRuntimeType(VRCConstraintBase constraint,
+                VRCConstraintBase.BakeOptions bakeOptions);
+
             public static readonly TryBakeCurrentOffsetsRuntimeType TryBakeCurrentOffsetsRuntime =
                 (TryBakeCurrentOffsetsRuntimeType)Delegate.CreateDelegate(
                     typeof(TryBakeCurrentOffsetsRuntimeType),

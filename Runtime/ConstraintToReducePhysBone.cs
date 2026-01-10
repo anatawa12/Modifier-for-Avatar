@@ -12,5 +12,6 @@ namespace Anatawa12.Modifier4Avatar
         // and constraints will handle them instead.
         public Transform?[] pbChains = Array.Empty<Transform?>();
         public bool solveInLocalSpace = true;
+        public bool rollFix = false;
     }
 }
